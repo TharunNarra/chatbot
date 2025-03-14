@@ -12,7 +12,13 @@ st.write(
 
 # Sidebar for model selection
 st.sidebar.header("Model Selection")
-model = st.sidebar.selectbox("Choose a model:", ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gemini-pro", "gemini-ultra"])
+model = st.sidebar.selectbox(
+    "Choose a model:",
+    [
+        "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo",
+        "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"
+    ]
+)
 
 # Ask user for their API key
 api_key = st.text_input("API Key", type="password")
@@ -46,7 +52,8 @@ else:
 
         # Generate a response based on the selected model
         if "gemini" in model:
-            response = genai.generate_text(model=model, prompt=prompt)
+            gemini_model = genai.GenerativeModel(model)
+            response = gemini_model.generate_content(prompt).text
         else:
             stream = client.chat.completions.create(
                 model=model,  # Use the selected model
