@@ -1,24 +1,29 @@
 import streamlit as st
 from openai import OpenAI
+import google.generativeai as genai
 
 # Show title and description.
 st.title("💬 Chatbot")
 st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+    "This is a simple chatbot that uses OpenAI's GPT models and Google's Gemini models to generate responses. "
+    "To use this app, you need to provide an OpenAI or Gemini API key. "
     "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
 )
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+# Sidebar for model selection
+st.sidebar.header("Model Selection")
+model = st.sidebar.selectbox("Choose a model:", ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gemini-pro", "gemini-ultra"])
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+# Ask user for their API key
+api_key = st.text_input("API Key", type="password")
+if not api_key:
+    st.info("Please add your API key to continue.", icon="🗝️")
+else:
+    # Determine which API to use based on model selection
+    if "gemini" in model:
+        genai.configure(api_key=api_key)
+    else:
+        client = OpenAI(api_key=api_key)
 
     # Create a session state variable to store the chat messages. This ensures that the
     # messages persist across reruns.
@@ -39,18 +44,22 @@ else:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
+        # Generate a response based on the selected model
+        if "gemini" in model:
+            response = genai.generate_text(model=model, prompt=prompt)
+        else:
+            stream = client.chat.completions.create(
+                model=model,  # Use the selected model
+                messages=[
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.messages
+                ],
+                stream=True,
+            )
+            response = st.write_stream(stream)
 
         # Stream the response to the chat using `st.write_stream`, then store it in 
         # session state.
         with st.chat_message("assistant"):
-            response = st.write_stream(stream)
+            st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
